@@ -1,17 +1,18 @@
 
 {- Minesweeper V2 
-  Developed by John Park, Theodore Lau, Adam Magdurulan.
+  Developed by Adam Magdurulan, John Park, & Theodore Lau.
   In conjunction with UBC CPSC 312 course curriculum.
   Project #2 of the UBC CPSC 312 Winter 2016T1.
 -}
 
 -- TO DEVELOPERS: This project is accompanied by a README, please refer to it for 
---          outstanding issues/changes/commants during the course of development.
+--                outstanding issues/changes/commants during the course of development.
 
 module Minesweeper2() where
 
 import Data.List ( (\\) )
 import System.IO
+import System.Random
 
 ------------------------------
 -- Board Class + Tile Class --
@@ -22,17 +23,17 @@ data Board = Board {
   width :: Int
 }
 
--- This needs to be changed!
 instance Show Board where
-  show b = showHeader (width b) ++ showTiles (tiles b) 0 where
-    align3 n
-      | n < 10   = ' ' : show n ++ " "
-      | n >= 100 = error "Number is too wide to fit here..."
-      | n >= 10  = ' ' : show n
-    showHeader n = "    " ++ foldl (\a b -> a ++ align3 b) "" [1..n] ++ "\n    " ++ foldl (\a b -> a ++ " v ") "" [1..n] ++ "\n"
-    
+  show b = showHeader (width b) ++ showTiles (tiles b) 1 where
+    alignHeader n
+      | n < 10   = " " ++ show n ++ " "
+      | n >= 10  = show n ++ " "
+    alignTiles n
+      | n < 10   = "  " ++ show n ++ " "
+      | n >= 10  = " " ++ show n ++ " "
+    showHeader n = "     " ++ foldl (\a b -> a ++ alignHeader b) "" [1..n] ++ "\n     " ++ foldl (\a b -> a ++ " v ") "" [1..n] ++ "\n"
     showTiles [] _ = ""
-    showTiles ts n = foldl (++) (align3 n ++ ">") (map show thisRow) ++ "\n" ++ showTiles otherRows (n+1) where
+    showTiles ts n = foldl (++) (alignTiles n ++ ">") (map show thisRow) ++ "\n" ++ showTiles otherRows (n+1) where
       (thisRow, otherRows) = splitAt (width b) ts
 
 data Tile = Tile {
@@ -59,83 +60,100 @@ newMine = Tile { value = -1, hidden = True, marked = False, question = False }
 -- Implementation code to build the grid. --
 --------------------------------------------
 buildGrid :: Int -> Int -> Int -> Board
-buildGrid w h m = (blankGrid w h) -- mineGrid ((blankGrid w h) m)
+buildGrid w h m = (mineGrid (blankGrid w h) m)
 
 blankGrid :: Int -> Int -> Board
 blankGrid w h = Board { tiles = [newTile | i <- [1..w], j <- [1..h]], width = w, height = h }
 
--- mineGrid :: Board -> Int -> Board
+mineGrid :: Board -> Int -> Board
+mineGrid b m = let 
+  h = height b
+  w = width b
+  -- Place Mines
+  place t 
+
+
+                     -- -- Reservoir polling
+                     -- place t      _   0 = t
+                     -- place (t:ts) rng n
+                     --    | rngValue <= fromIntegral n / fromIntegral (length (t:ts))  = newBomb : place ts rng' (n - 1)
+                     --    | otherwise              = t : place ts rng' n
+                     --    where (rngValue, rng') = randomR (0, 1) rng :: (Double, StdGen)
+                         
+                     -- -- DOOO EEEEEEIT
+                     -- t' = place (tiles b) g n
+                     --in
+                     -- Board t' h w
 
 --------------------------------------
 -- Implementation code to run game. --
 --------------------------------------
---!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-markTile :: Tile -> Tile 
-markTile (Tile v m h _) = Tile v (not m) h False
 
-revealTile :: Tile -> Tile
-revealTile (Tile v m _ q) = Tile v m False q
+--markTile :: Tile -> Tile 
+--markTile (Tile v m h _) = Tile v (not m) h False
 
-queryTile :: Tile -> Tile 
-queryTile (Tile v _ h q) = Tile v False h (not q)
+--revealTile :: Tile -> Tile
+--revealTile (Tile v m _ q) = Tile v m False q
 
-help :: 
-updateBoardAtN :: (Tile -> Tile) -> Board -> Int -> Board 
-updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where 
-	hlpr _ [] _ = []
-	hlpr f (t:ts) 0 = f t:ts 
-	hlpr f (t:ts) n = t:hlpr f ts (n-1)
+--queryTile :: Tile -> Tile 
+--queryTile (Tile v _ h q) = Tile v False h (not q)
 
-getPos :: Int -> Int -> Board -> Int 
-getPos y x b = (y * width b) + x
-	
-doMove :: String -> Board -> Int -> Int -> Board 
-doMove s b y x = updateBoardAtN f b (getPos y x b) where
-	f = case s of 
-		"m" -> markTile
-		"r" -> revealTile
-		"q" -> queryTile
-		_ -> id  -- id leaves the resultant board unchanged
+--help :: 
+--updateBoardAtN :: (Tile -> Tile) -> Board -> Int -> Board 
+--updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where 
+--  hlpr _ [] _ = []
+--  hlpr f (t:ts) 0 = f t:ts 
+--  hlpr f (t:ts) n = t:hlpr f ts (n-1)
 
-updateHelper :: Board -> Board -> Board 
-updateHelper b newb 
-	| newb == b = newb 
-	| otherwise = updateHelper newb (Board newt h w) where
-		h = height newb
-		w = width newb 
-		nextPos x y 
-			| x == w - 1 = (0, y + 1)
-			| otherwise = (x + 1, y)
-		getAdjacent x y offsets = 
-		
-		
-updateBoard :: Board -> Board
-updateBoard = updateHelper (blankGrid 0 0)
+--getPos :: Int -> Int -> Board -> Int 
+--getPos y x b = (y * width b) + x
+  
+--doMove :: String -> Board -> Int -> Int -> Board 
+--doMove s b y x = updateBoardAtN f b (getPos y x b) where
+--  f = case s of 
+--    "m" -> markTile
+--    "r" -> revealTile
+--    "q" -> queryTile
+--    _ -> id  -- id leaves the resultant board unchanged
+
+--updateHelper :: Board -> Board -> Board 
+--updateHelper b newb 
+--  | newb == b = newb 
+--  | otherwise = updateHelper newb (Board newt h w) where
+--    h = height newb
+--    w = width newb 
+--    nextPos x y 
+--      | x == w - 1 = (0, y + 1)
+--      | otherwise = (x + 1, y)
+--    getAdjacent x y offsets = 
+    
+    
+--updateBoard :: Board -> Board
+--updateBoard = updateHelper (blankGrid 0 0)
 
 runGame :: Board -> IO ()
 runGame b =
   print b -- Debugging game 
   {-
   case getState b of
-	Lose -> do 
-		print b 
-		print "You lose! This is what happens with Donald Trump as President.."
-	Win -> do 
-		print b
-		print "You win! Congratulations!"
-	Continue -> do 
-		print b 
-		print "ENTER: Next move - Mark/Unmark (m) or Reveal (r)?"
-		mov <- getLine
-		print "ENTER: Row?"
-		y <- getLine 
-		print "ENTER: Column?"
-		x <- getLine 
-		let newb = updateBoard $ doMove mov b (read y) (read x)
-		rungame newb
-	-}
+  Lose -> do 
+    print b 
+    print "You lose! This is what happens with Donald Trump as President.."
+  Win -> do 
+    print b
+    print "You win! Congratulations!"
+  Continue -> do 
+    print b 
+    print "ENTER: Next move - Mark/Unmark (m) or Reveal (r)?"
+    mov <- getLine
+    print "ENTER: Row?"
+    y <- getLine 
+    print "ENTER: Column?"
+    x <- getLine 
+    let newb = updateBoard $ doMove mov b (read y) (read x)
+    rungame newb
+  -}
 
---!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ---------------------------------------------
 -- Implementation code to initialize game. --
 ---------------------------------------------
