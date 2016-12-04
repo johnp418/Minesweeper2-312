@@ -25,12 +25,13 @@ data Board = Board {
 
 
 data Tile = Tile {
-  value :: Int,
-  hidden :: Bool,
+  value :: TileVal,
   marked :: Bool,
+  hidden :: Bool,
   question :: Bool
 } deriving (Eq)
 
+data TileVal = Value Int | Mine deriving (Eq)
 
 -- This needs to be changed!
 instance Show Board where
@@ -49,95 +50,123 @@ instance Show Tile where
   show Tile { question = True } = " ? " -- Question
   show Tile { marked = True } = " ! " -- Marked
   show Tile { hidden = True } = " + " -- Not opened
-  show Tile { value = -1 } = " X " -- Mine
-  show Tile { value = 0 } = "   " -- Empty
-  show Tile { value = x } = " " ++ show x ++ " " -- Mines nearby
+  show Tile { value = Mine } = " X " -- Mine
+  show Tile { value = (Value x) } = " " ++ show x ++ " " -- Mines nearby
 
 newTile :: Tile
-newTile = Tile { value = 0, hidden = True, marked = False, question = False }
+newTile = Tile { value = Value 0, hidden = True, marked = False, question = False }
 newMine :: Tile
-newMine = Tile { value = -1, hidden = True, marked = False, question = False } -- Mine 
+newMine = Tile { value = Mine , hidden = True, marked = False, question = False } -- Mine 
 
 isMine :: Tile -> Bool
-isMine t = (value t) == -1
+isMine t = (value t) == Mine
 
 isEmpty :: Tile -> Bool
-isEmpty t = (value t) == 0
+isEmpty t = ((value t) == Value 0) && not (hidden t)
 
-
--- addTile :: Tile -> Int -> Tile
--- addTile (Tile x n) = Tile ((value t) + n)  
+nextTilePos :: Int -> Int -> Board -> (Int, Int)
+nextTilePos x y b
+  | x == (width b) - 1 = (0, y+1)
+  | otherwise = (x+1, y)
 
 --------------------------------------------
 -- Implementation code to build the grid. --
 --------------------------------------------
-buildGrid :: Int -> Int -> Int -> Board
-buildGrid w h m = (blankGrid w h) -- mineGrid ((blankGrid w h) m)
+buildGrid :: Int -> Int -> Int -> StdGen -> Board
+buildGrid w h m rng = setTilesValue (mineGrid (blankGrid w h) m rng)
 
 blankGrid :: Int -> Int -> Board
 blankGrid w h = Board { tiles = [newTile | i <- [1..w], j <- [1..h]], width = w, height = h }
 
--- mineGrid :: Board -> Int -> Board
+totalNumTiles :: Board -> Int
+totalNumTiles b = (width b) * (height b)
 
---------------------------
--- JOHN
---------------------------
 
--- setTileValue :: Board -> Board
--- setTileValue b =
---   let
---     h = (height b)
---     w = (width b)
+countNearbyMines :: [Tile] -> Int
+countNearbyMines tiles = length (filter isMine tiles)
 
---     next x y =
---       | x == 
+addMineCountToTile :: Tile -> Int -> Tile
+addMineCountToTile (Tile Mine m h q) n = Tile Mine m h q
+addMineCountToTile (Tile (Value x) m h q) n = Tile (Value (x+n)) m h q
+
+--Takes x,y, and board, returns position in Tiles arr
+getPos :: Int -> Int -> Board -> Int 
+getPos x y b = (y * width b) + x
+
+-- 3x3 Neighbor tiles around the center
+neighborTiles :: [(Int, Int)]
+neighborTiles = [(x,y) | x <- [-1..1] , y <- [-1..1]] -- Pair of (-1,-1), (-1,0), (-1,1), ...,(1,0), (1,1)
+
+getDiffPair :: Int -> Int -> (Int,Int) -> (Int,Int)
+getDiffPair x y (x1,y1) = (x + x1, y + y1)
+
+getTilesInRange :: Board -> [(Int, Int)] -> [Tile]
+getTilesInRange b pairList = lst where
+  h = height b
+  w = width b
+  test (x,y) = (x >= 0 && y >= 0 && x < w && y < h)  
+  toTiles = filter test pairList
+  toTile (x,y) = (tiles b) !! (getPos x y b)
+  lst = map toTile toTiles
+
+setTilesValue :: Board -> Board
+setTilesValue b = let
+  w = (width b)
+  h = (height b)
+
+  tilesNearby x y b = getTilesInRange b (map (getDiffPair x y) neighborTiles)
+
+  replaceTiles [] _ = []
+  replaceTiles (t:rest) (x,y) = addMineCountToTile t (countNearbyMines (tilesNearby x y b)) :
+    replaceTiles rest (nextTilePos x y b)
     
---     updatedTiles = 1
---   in Board updateTiles h w
+  replacedTiles = replaceTiles (tiles b) (0,0)
 
+  in Board replacedTiles h w
+  
+-- Takes a board, Replaces tiles with mines
+mineGrid :: Board -> Int -> StdGen -> Board
+mineGrid b 0 _ = b
+mineGrid b n rng = newBoard where
+  newBoard = Board { tiles = replacedTiles, height = (height b), width = (width b) } where
 
+    plantMine ts rng 0 = ts
+    plantMine (tile:rest) rng n
+      | rngValue <= fromIntegral n / fromIntegral (length (tile:rest)) = newMine : plantMine rest rng' (n - 1)
+      | otherwise = tile : plantMine rest rng' n
+      where
+        (rngValue, rng') = randomR(0,1)
+         rng :: (Double, StdGen)
+    
+    replacedTiles = plantMine (tiles b) rng n
 
---------------------------------------
--- Implementation code to run game. --
---------------------------------------
-
+-- Mark tile 
 markTile :: Tile -> Tile 
 markTile (Tile v m h _) = Tile v (not m) h False
 
+-- Open tile
 revealTile :: Tile -> Tile
 revealTile (Tile v m _ q) = Tile v m False q
 
--- Query tile changed marked attr to false, !question
-queryTile :: Tile -> Tile 
-queryTile (Tile v _ h q) = Tile v False h (not q)
+-- Question mark to tile
+questionTile :: Tile -> Tile 
+questionTile (Tile v _ h q) = Tile v False h (not q)
 
--- Updates the board, applying given function to every tiles in the board
+-- Updates the board, applying given function to nth tile in the board
 updateBoardAtN :: (Tile -> Tile) -> Board -> Int -> Board 
 updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where 
 	hlpr _ [] _ = []
 	hlpr f (t:ts) 0 = f t:ts 
 	hlpr f (t:ts) n = t:hlpr f ts (n-1)
 
---Takes x,y, and board, returns position in Tiles arr
-getPos :: Int -> Int -> Board -> Int 
-getPos x y b = (y * width b) + x
-
 doMove :: String -> Board -> Int -> Int -> Board 
 doMove s b y x = updateBoardAtN f b (getPos x y b) where
   f = case s of
     "m" -> markTile
     "r" -> revealTile
-    "q" -> queryTile
+    "q" -> questionTile
     _ -> id  -- id leaves the resultant board unchanged
 
-
-
-neighborTiles :: [(Int, Int)]
-neighborTiles = [(x,y) | x <- [-1..1] , y <- [-1..1]] -- Pair of (-1,-1), (-1,0), (-1,1), ...,(1,0), (1,1)
-
-boardGet2 :: Board -> Int -> Int -> Tile
-boardGet2 b y x
-  | y >= 0 && x >= 0 && y < (height b) && x < (width b) = (tiles b) !! (getPos x y b)
 
 updateHelper :: Board -> Board -> Board 
 updateHelper b newBoard
@@ -145,19 +174,15 @@ updateHelper b newBoard
   | otherwise = updateHelper b (Board newTiles h w) where
       h = (height b)
       w = (width b)
-      nextTile x y
-        | x == w - 1 = (0, y + 1)
-        | otherwise = (x + 1, y)
-      getNeighbor x y deltas = boardGet2 b (y + (fst deltas)) (x + (snd deltas))
-      
-      newTiles = (updateTile (tiles b) 0 0) where
-        updateTile [] _ _ = []
-        updateTile (Tile n marked hidden question : rest) x y
-          | any isEmpty (map (getNeighbor x y) neighborTiles) = Tile n marked False question : updateTile rest x' y'
-          where (x', y') = nextTile x y 
-        updateTile (t:rest) x y = t : updateTile rest x' y'
-          where (x', y') = nextTile x y
-      
+
+      tilesNearby x y b = getTilesInRange b (map (getDiffPair x y) neighborTiles)
+
+      updateTile [] _ = []
+      updateTile (Tile (Value n) marked hidden question : rest) (x,y)
+        | any isEmpty (tilesNearby x y b)
+        = Tile (Value n) marked False question : updateTile rest (nextTilePos x y b)
+      updateTile (t:rest) (x,y) = t : updateTile rest (nextTilePos x y b)
+      newTiles = updateTile (tiles b) (0,0)
 	
 updateBoard :: Board -> Board
 updateBoard = updateHelper (blankGrid 0 0)
@@ -173,7 +198,7 @@ runGame b =
       print "You win! Congratulations!"
     Continue -> do
       print b
-      print "ENTER: Next move - Mark/Unmark (m) or Reveal (r)?"
+      print "ENTER: Next move - Mark/Unmark (m) / Reveal (r) / Question Mark (q) ?"
       mov <- getLine
       print "ENTER: Row?"
       y <- getLine
@@ -186,9 +211,9 @@ data GameState = Lose | Win | Continue | Undetermined
   deriving(Eq, Show)
 
 getTileStatus :: Tile -> GameState
-getTileStatus Tile { value = -1, hidden = False, marked = False, question = False } = Lose
-getTileStatus Tile { value = 0, hidden = True, marked = False, question = False } = Continue
-getTileStatus Tile { value = x, marked = True, question = False } = Continue
+getTileStatus Tile { value = Mine, hidden = False, marked = False, question = False } = Lose
+getTileStatus Tile { value = Mine, hidden = True, marked = False, question = False } = Continue
+getTileStatus Tile { value = (Value n), hidden = False, marked = True, question = False } = Continue
 getTileStatus _ = Undetermined
 
 getState :: Board -> GameState
@@ -201,9 +226,10 @@ getState b = update (tiles b) where
     where
       f _ Lose = Lose 
       f Lose _ = Lose
-      f st Undetermined  = st
+      f state Win = state
+      f state Undetermined  = state
       f Continue Continue = Continue
-      f st st1 = f st1 st -- Swaps the GameState
+      f state state1 = f state1 state -- Swaps the GameState
 
 
                 
@@ -219,7 +245,8 @@ start = do
   height <- getHeight
   width <- getWidth
   mines <- getMines height width
-  runGame (buildGrid (read width) (read height) (read mines))
+  rng <- newStdGen
+  runGame (buildGrid (read width) (read height) (read mines) rng)
 
 getHeight :: IO String
 getHeight = do
