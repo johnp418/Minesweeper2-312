@@ -33,23 +33,23 @@ data Tile = Tile {
 
 data TileVal = Value Int | Mine deriving (Eq)
 
--- This needs to be changed!
 instance Show Board where
-  show b = showHeader (width b) ++ showTiles (tiles b) 0 where
-    align3 n
-      | n < 10   = ' ' : show n ++ " "
-      | n >= 100 = error "Number is too wide to fit here..."
-      | n >= 10  = ' ' : show n
-    showHeader n = "    " ++ foldl (\a b -> a ++ align3 b) "" [0..n-1] ++ "\n    " ++ foldl (\a b -> a ++ " - ") "" [0..n-1] ++ "\n"
-    
+  show b = showHeader (width b) ++ showTiles (tiles b) 1 where
+    alignHeader n
+      | n < 10   = " " ++ show n ++ " "
+      | n >= 10  = show n ++ " "
+    alignTiles n
+      | n < 10   = "  " ++ show n ++ " "
+      | n >= 10  = " " ++ show n ++ " "
+    showHeader n = "     " ++ foldl (\a b -> a ++ alignHeader b) "" [1..n] ++ "\n     " ++ foldl (\a b -> a ++ " v ") "" [1..n] ++ "\n"
     showTiles [] _ = ""
-    showTiles ts n = foldl (++) (align3 n ++ "|") (map show thisRow) ++ "\n" ++ showTiles otherRows (n+1) where
+    showTiles ts n = foldl (++) (alignTiles n ++ ">") (map show thisRow) ++ "\n" ++ showTiles otherRows (n+1) where
       (thisRow, otherRows) = splitAt (width b) ts
 
 instance Show Tile where
   show Tile { question = True } = " ? " -- Question
   show Tile { marked = True } = " ! " -- Marked
-  show Tile { hidden = True } = " + " -- Not opened
+  show Tile { hidden = True } = " _ " -- Not opened
   show Tile { value = Mine } = " X " -- Mine
   show Tile { value = (Value x) } = " " ++ show x ++ " " -- Mines nearby
 
@@ -80,7 +80,6 @@ blankGrid w h = Board { tiles = [newTile | i <- [1..w], j <- [1..h]], width = w,
 
 totalNumTiles :: Board -> Int
 totalNumTiles b = (width b) * (height b)
-
 
 countNearbyMines :: [Tile] -> Int
 countNearbyMines tiles = length (filter isMine tiles)
@@ -129,7 +128,6 @@ mineGrid :: Board -> Int -> StdGen -> Board
 mineGrid b 0 _ = b
 mineGrid b n rng = newBoard where
   newBoard = Board { tiles = replacedTiles, height = (height b), width = (width b) } where
-
     plantMine ts rng 0 = ts
     plantMine (tile:rest) rng n
       | rngValue <= fromIntegral n / fromIntegral (length (tile:rest)) = newMine : plantMine rest rng' (n - 1)
@@ -154,10 +152,10 @@ questionTile (Tile v _ h q) = Tile v False h (not q)
 
 -- Updates the board, applying given function to nth tile in the board
 updateBoardAtN :: (Tile -> Tile) -> Board -> Int -> Board 
-updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where 
-	hlpr _ [] _ = []
-	hlpr f (t:ts) 0 = f t:ts 
-	hlpr f (t:ts) n = t:hlpr f ts (n-1)
+updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where  
+  hlpr _ [] _ = []
+  hlpr f (t:ts) 0 = f t:ts 
+  hlpr f (t:ts) n = t:hlpr f ts (n-1)
 
 doMove :: String -> Board -> Int -> Int -> Board 
 doMove s b y x = updateBoardAtN f b (getPos x y b) where
@@ -183,7 +181,7 @@ updateHelper b newBoard
         = Tile (Value n) marked False question : updateTile rest (nextTilePos x y b)
       updateTile (t:rest) (x,y) = t : updateTile rest (nextTilePos x y b)
       newTiles = updateTile (tiles b) (0,0)
-	
+
 updateBoard :: Board -> Board
 updateBoard = updateHelper (blankGrid 0 0)
 
@@ -295,7 +293,7 @@ menu = do
   putStrLn "Welcome to Minesweeper2!"
   putStrLn "Created by Adam Magdurulan, John Park, & Theodore Lau\n"
   putStrLn "ENTER: start"
-  putStrLn "ENTER: quit"
+  putStrLn "ENTER: :quit"
   cmd <- getLine
   if ((read cmd) == "start") then start else menu
 
