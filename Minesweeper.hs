@@ -90,7 +90,7 @@ addMineCountToTile (Tile (Value x) m h q) n = Tile (Value (x+n)) m h q
 
 --Takes x,y, and board, returns position in Tiles arr
 getPos :: Int -> Int -> Board -> Int 
-getPos x y b = (y * width b) + x
+getPos x y b = ((y - 1) * width b) + (x-1)
 
 -- 3x3 Neighbor tiles around the center
 neighborTiles :: [(Int, Int)]
@@ -202,8 +202,10 @@ runGame b =
       y <- getLine
       print "ENTER: Column?"
       x <- getLine
-      let newb = updateBoard (doMove mov b (read y) (read x))
+      let newb =  (doMove mov b (read y) (read x))
       runGame newb
+
+      -- let newb = updateBoard (doMove mov b (read y) (read x)) <- Not working atm
 
 data GameState = Lose | Win | Continue | Undetermined
   deriving(Eq, Show)
