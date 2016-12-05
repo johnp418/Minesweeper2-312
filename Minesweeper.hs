@@ -150,19 +150,6 @@ revealTile (Tile v _ _ _) = Tile v False False False
 questionTile :: Tile -> Tile 
 questionTile (Tile v _ h q) = Tile v False h (not q)
 
-
--- Hint tile <- Our extra feature!
--- Reveal one random tile that's not a mine randomly
-hint :: Board -> StdGen -> Board
-hint b rng = b where
-  w = width b
-  h = height b
-  ts = (tiles b)
-  len = (length ts)
-  
-
-
-
 -- Updates the board, applying given function to nth tile in the board
 updateBoardAtN :: (Tile -> Tile) -> Board -> Int -> Board 
 updateBoardAtN f (Board t h w) n = Board (hlpr f t n) h w where  
@@ -199,13 +186,6 @@ updateHelper b newBoard
 updateBoard :: Board -> Board
 updateBoard = updateHelper (blankGrid 0 0)
 
-
-checkParam :: String -> Bool
-checkParam s = bool where
-  bool = case s of
-    "h" -> True
-    _ -> False
-
 getInputY :: Board -> IO String
 getInputY b = do
   print "ENTER: Row?"
@@ -215,7 +195,7 @@ getInputY b = do
   else
     do putStrLn "ERROR: Please enter a valid row number!"
        getInputY b
-	 
+
 getInputX :: Board -> IO String
 getInputX b = do
   print "ENTER: Column?"
@@ -225,7 +205,7 @@ getInputX b = do
   else
     do putStrLn "ERROR: Please enter a valid column number!"
        getInputX b
-	   
+
 runGame :: Board -> IO ()
 runGame b =
   case getState b of
@@ -239,14 +219,10 @@ runGame b =
       print b
       print "ENTER: Next move - Mark/Unmark (m) / Reveal (r) / Question Mark (q) / Hint(h) ?"
       mov <- getLine
-      hintRng <- newStdGen
-      if (checkParam mov)
-        then runGame (hint b hintRng)
-        else do
-        y <- (getInputY b)
-        x <- (getInputX b)
-        let newb =  updateBoard (doMove mov b ((read y) - 1) ((read x)-1))
-        runGame newb
+      y <- (getInputY b)
+      x <- (getInputX b)
+      let newb =  updateBoard (doMove mov b ((read y) - 1) ((read x)-1))
+      runGame newb
 
 data GameState = Lose | Win | Continue | Undetermined
   deriving(Eq, Show)
