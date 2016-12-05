@@ -186,6 +186,26 @@ updateHelper b newBoard
 updateBoard :: Board -> Board
 updateBoard = updateHelper (blankGrid 0 0)
 
+getInputY :: Board -> IO String
+getInputY b = do
+  print "ENTER: Row?"
+  y <- getLine
+  if (isValidNumber y && (read y) <= (height b) && (read y) > 0) then
+    return y
+  else
+    do putStrLn "ERROR: Please enter a valid row number!"
+       getInputY b
+	 
+getInputX :: Board -> IO String
+getInputX b = do
+  print "ENTER: Column?"
+  x <- getLine
+  if (isValidNumber x && (read x) <= (width b) && (read x) > 0) then
+    return x
+  else
+    do putStrLn "ERROR: Please enter a valid column number!"
+       getInputX b
+	   
 runGame :: Board -> IO ()
 runGame b =
   case getState b of
@@ -199,10 +219,8 @@ runGame b =
       print b
       print "ENTER: Next move - Mark/Unmark (m) / Reveal (r) / Question Mark (q) ?"
       mov <- getLine
-      print "ENTER: Row?"
-      y <- getLine
-      print "ENTER: Column?"
-      x <- getLine
+      y <- (getInputY b)
+      x <- (getInputX b)
       let newb =  updateBoard (doMove mov b ((read y) - 1) ((read x)-1))
       runGame newb
 
@@ -297,8 +315,6 @@ menu = do
   putStrLn "Created by Adam Magdurulan, John Park, & Theodore Lau\n"
   putStrLn "ENTER: start"
   putStrLn "ENTER: :quit"
-  cmd <- getLine
-  if ((read cmd) == "start") then start else menu
 
 
 
