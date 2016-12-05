@@ -154,7 +154,7 @@ questionTile (Tile v _ h q) = Tile v False h (not q)
 -- Hint tile <- Our extra feature!
 -- Reveal one random tile that's not a mine randomly
 hint :: Board -> StdGen -> Board
-hint b rng = newBoard where
+hint b rng = b where
   w = width b
   h = height b
   ts = (tiles b)
@@ -206,6 +206,26 @@ checkParam s = bool where
     "h" -> True
     _ -> False
 
+getInputY :: Board -> IO String
+getInputY b = do
+  print "ENTER: Row?"
+  y <- getLine
+  if (isValidNumber y && (read y) <= (height b) && (read y) > 0) then
+    return y
+  else
+    do putStrLn "ERROR: Please enter a valid row number!"
+       getInputY b
+	 
+getInputX :: Board -> IO String
+getInputX b = do
+  print "ENTER: Column?"
+  x <- getLine
+  if (isValidNumber x && (read x) <= (width b) && (read x) > 0) then
+    return x
+  else
+    do putStrLn "ERROR: Please enter a valid column number!"
+       getInputX b
+	   
 runGame :: Board -> IO ()
 runGame b =
   case getState b of
@@ -223,18 +243,10 @@ runGame b =
       if (checkParam mov)
         then runGame (hint b hintRng)
         else do
-        print "ENTER: Row?"
-        y <- getLine
-        print "ENTER: Column?"
-        x <- getLine
+        y <- (getInputY b)
+        x <- (getInputX b)
         let newb =  updateBoard (doMove mov b ((read y) - 1) ((read x)-1))
         runGame newb
-
-  
-
-
-
-      -- let newb = updateBoard (doMove mov b (read y) (read x)) <- Not working atm
 
 data GameState = Lose | Win | Continue | Undetermined
   deriving(Eq, Show)
@@ -325,8 +337,6 @@ menu = do
   putStrLn "Created by Adam Magdurulan, John Park, & Theodore Lau\n"
   putStrLn "ENTER: start"
   putStrLn "ENTER: :quit"
-  cmd <- getLine
-  if ((read cmd) == "start") then start else menu
 
 
 
