@@ -90,7 +90,7 @@ addMineCountToTile (Tile (Value x) m h q) n = Tile (Value (x+n)) m h q
 
 --Takes x,y, and board, returns position in Tiles arr
 getPos :: Int -> Int -> Board -> Int 
-getPos x y b = ((y - 1) * width b) + (x-1)
+getPos x y b = (y * width b) + x
 
 -- 3x3 Neighbor tiles around the center
 neighborTiles :: [(Int, Int)]
@@ -169,18 +169,19 @@ doMove s b y x = updateBoardAtN f b (getPos x y b) where
 updateHelper :: Board -> Board -> Board 
 updateHelper b newBoard
   | b == newBoard = b
-  | otherwise = updateHelper b (Board newTiles h w) where
-      h = (height b)
-      w = (width b)
+  | otherwise = updateHelper newBoard (Board newTiles h w) where
+      h = (height newBoard)
+      w = (width newBoard)
 
-      tilesNearby x y b = getTilesInRange b (map (getDiffPair x y) neighborTiles)
+      tilesNearby x y board = getTilesInRange board (map (getDiffPair x y) neighborTiles)
 
       updateTile [] _ = []
       updateTile (Tile (Value n) marked hidden question : rest) (x,y)
-        | any isEmpty (tilesNearby x y b)
-        = Tile (Value n) marked False question : updateTile rest (nextTilePos x y b)
-      updateTile (t:rest) (x,y) = t : updateTile rest (nextTilePos x y b)
-      newTiles = updateTile (tiles b) (0,0)
+        | any isEmpty (tilesNearby x y newBoard) = Tile (Value n) marked False question : updateTile rest (nextTilePos x y newBoard)
+
+      updateTile (t:rest) (x,y) = t : updateTile rest (nextTilePos x y newBoard)
+      
+      newTiles = updateTile (tiles newBoard) (0,0)
 
 updateBoard :: Board -> Board
 updateBoard = updateHelper (blankGrid 0 0)
@@ -202,7 +203,7 @@ runGame b =
       y <- getLine
       print "ENTER: Column?"
       x <- getLine
-      let newb =  (doMove mov b (read y) (read x))
+      let newb =  updateBoard (doMove mov b ((read y) - 1) ((read x)-1))
       runGame newb
 
       -- let newb = updateBoard (doMove mov b (read y) (read x)) <- Not working atm
