@@ -144,7 +144,7 @@ markTile (Tile v m h _) = Tile v (not m) h False
 
 -- Open tile
 revealTile :: Tile -> Tile
-revealTile (Tile v m _ q) = Tile v m False q
+revealTile (Tile v _ _ _) = Tile v False False False
 
 -- Question mark to tile
 questionTile :: Tile -> Tile 
